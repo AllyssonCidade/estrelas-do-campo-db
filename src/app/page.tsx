@@ -176,7 +176,7 @@ function LocaisSection() {
                       alt={local.alt}
                       fill
                       style={{ objectFit: 'cover' }}
-                      loading="lazy"
+                      loading="lazy" // Lazy load images in Locais section
                       unoptimized
                     />
                 </div>
@@ -201,16 +201,19 @@ function LocaisSection() {
 function AgendaSection() {
   const [eventos, setEventos] = React.useState<Evento[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null); // State to hold error message
 
   React.useEffect(() => {
     const fetchEventos = async () => {
+      setLoading(true);
+      setError(null); // Reset error before fetching
       try {
-        setLoading(true);
         const fetchedEventos = await getEventos();
         setEventos(fetchedEventos);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch events:", error);
-        // Handle error state if needed
+        setError("Não foi possível carregar a agenda. Verifique sua conexão ou tente novamente mais tarde."); // Set user-friendly error message
+        // Keep loading false, show error message instead of skeleton
       } finally {
         setLoading(false);
       }
@@ -258,6 +261,8 @@ function AgendaSection() {
                 </Card>
             ))}
           </div>
+        ) : error ? ( // Display error message if fetch failed
+          <p className="text-center text-destructive mt-10">{error}</p>
         ) : eventos.length === 0 ? (
           <p className="text-center text-muted-foreground mt-10">Nenhum evento agendado no momento.</p>
         ) : (

@@ -13,16 +13,18 @@ import { motion } from 'framer-motion'; // Import motion for animations
 export default function NoticiasPage() {
   const [noticias, setNoticias] = React.useState<Noticia[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null); // State to hold error message
 
   React.useEffect(() => {
     const fetchNoticias = async () => {
+      setLoading(true);
+      setError(null); // Reset error before fetching
       try {
-        setLoading(true);
         const fetchedNoticias = await getNoticias();
         setNoticias(fetchedNoticias);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch news:", error);
-        // Handle error state if needed
+        setError("Não foi possível carregar as notícias. Verifique sua conexão ou tente novamente mais tarde."); // Set user-friendly error message
       } finally {
         setLoading(false);
       }
@@ -44,7 +46,7 @@ export default function NoticiasPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container mx-auto max-w-4xl py-8 px-4"> {/* Added container for layout */}
       <h1 className="text-2xl font-bold text-primary">Notícias do Time</h1>
       <p className="text-muted-foreground">Fique por dentro das novidades das Estrelas do Campo!</p>
 
@@ -65,6 +67,8 @@ export default function NoticiasPage() {
             </Card>
            ))}
         </div>
+      ) : error ? ( // Display error message if fetch failed
+         <p className="text-center text-destructive mt-10">{error}</p>
       ) : noticias.length === 0 ? (
         <p>Nenhuma notícia publicada recentemente.</p>
       ) : (
@@ -88,7 +92,7 @@ export default function NoticiasPage() {
                       height={100} // Specify height
                       style={{ objectFit: 'cover' }}
                       className="rounded-t-lg sm:rounded-l-lg sm:rounded-tr-none"
-                      loading="lazy" // Lazy load images
+                      loading="lazy" // Lazy load images in Noticias section
                       unoptimized={noticia.imagem.startsWith('https://via.placeholder.com')} // Avoid optimizing placeholders
                     />
                   </div>
@@ -104,7 +108,7 @@ export default function NoticiasPage() {
                       <CardTitle className="text-lg text-primary">{noticia.titulo}</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 pb-2">
-                      <p className="text-sm text-foreground line-clamp-3">{noticia.texto}</p>
+                      <p className="text-sm text-foreground line-clamp-3">{noticia.texto}</p> {/* Use line-clamp */}
                     </CardContent>
                   </div>
                   <div className="flex items-center gap-2 pt-2 border-t border-border mt-auto">

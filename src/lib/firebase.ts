@@ -41,11 +41,14 @@ try {
       .then(() => console.log("Firestore offline persistence enabled."))
       .catch((err) => {
         if (err.code == 'failed-precondition') {
+          // This means persistence is already enabled in another tab or failed initialization.
+          // Multiple tabs open is the most common cause.
           console.warn("Firestore persistence failed: Multiple tabs open? Only enable in one tab.");
         } else if (err.code == 'unimplemented') {
+          // The current browser does not support all of the features required to enable persistence
           console.warn("Firestore persistence failed: Browser not supported?");
         } else {
-          console.error("Firestore persistence failed:", err);
+           console.error("Firestore persistence failed with error code:", err.code, err);
         }
       });
 } catch (error) {
@@ -134,14 +137,22 @@ export async function getEventos(): Promise<Evento[]> {
         }
       });
     }
-  } catch (error) {
-    console.error("Error fetching events from Firestore:", error);
-     if (process.env.NODE_ENV === 'development') {
-        console.log("Using sample event data due to fetch error.");
+  } catch (error: any) {
+    // Check if the error is due to being offline and persistence is enabled
+    if (error.code === 'unavailable') {
+        console.warn("Network unavailable. Firestore data may be stale or unavailable if cache is empty.");
+        // Attempt to return potentially stale data from cache or fallback
+    } else {
+      console.error("Error fetching events from Firestore:", error);
+    }
+
+     if (process.env.NODE_ENV === 'development' && eventos.length === 0) { // Only use sample if Firestore fetch failed AND events array is still empty
+        console.log("Using sample event data due to fetch error or offline state.");
         eventos = sampleEventos.map((evento, index) => ({ ...evento, id: `sample-${index}` }));
-     } else {
-        return []; // Return empty array on error in production
+     } else if (eventos.length === 0) { // Return empty array on error in production if cache is empty
+        return [];
      }
+      // If there's cached data, it will be in the 'eventos' array here, proceed with filtering/sorting
   }
 
   // Filter for today or future dates and sort client-side
@@ -194,12 +205,17 @@ export async function getNoticias(): Promise<Noticia[]> {
         });
     }
 
-  } catch (error) {
-    console.error("Error fetching news from Firestore:", error);
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Using sample news data due to fetch error.");
-        noticias = sampleNoticias.map((noticia, index) => ({ ...noticia, id: `sample-${index}` }));
+  } catch (error: any) {
+     if (error.code === 'unavailable') {
+        console.warn("Network unavailable. Firestore news data may be stale or unavailable if cache is empty.");
      } else {
+        console.error("Error fetching news from Firestore:", error);
+     }
+
+      if (process.env.NODE_ENV === 'development' && noticias.length === 0) {
+        console.log("Using sample news data due to fetch error or offline state.");
+        noticias = sampleNoticias.map((noticia, index) => ({ ...noticia, id: `sample-${index}` }));
+     } else if (noticias.length === 0) {
         return [];
      }
   }
@@ -298,9 +314,17 @@ export async function getAllEventosCMS(): Promise<Evento[]> {
              }
         });
          // No sample data fallback needed for CMS usually
-    } catch (error) {
-        console.error("Error fetching all events for CMS:", error);
-        throw new Error("Falha ao carregar eventos para o CMS.");
+    } catch (error: any) {
+         if (error.code === 'unavailable') {
+            console.warn("Network unavailable. CMS event data may be stale or unavailable if cache is empty.");
+            // Potentially inform the user that data might be outdated
+         } else {
+           console.error("Error fetching all events for CMS:", error);
+         }
+         // Even if offline, if data exists in cache, it will be in 'eventos'
+         if (eventos.length === 0) {
+            throw new Error("Falha ao carregar eventos para o CMS. Verifique a conexão.");
+         }
     }
      // Sort by actual date descending for CMS view after fetching
     return eventos
@@ -319,5 +343,3 @@ export async function getAllEventosCMS(): Promise<Evento[]> {
 
 
 export { db };
-
-    

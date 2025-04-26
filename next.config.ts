@@ -3,13 +3,11 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Removed typescript ignoreBuildErrors for production readiness
+  // Removed eslint ignoreDuringBuilds for production readiness
   images: {
+    // Keep image optimization enabled (default is true, but explicit is fine)
+    unoptimized: false, // Ensure optimization is generally ON
     remotePatterns: [
       {
         protocol: 'https',
@@ -26,6 +24,12 @@ const nextConfig: NextConfig = {
        { // Add placeholder domain
         protocol: 'https',
         hostname: 'via.placeholder.com',
+        port: '',
+        pathname: '/**',
+      },
+       { // Added Unsplash for hero background
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
       },
