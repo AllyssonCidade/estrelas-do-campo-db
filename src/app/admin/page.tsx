@@ -99,6 +99,10 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
         setFormError('Título não pode exceder 100 caracteres.');
         return;
     }
+    if (local.length > 100) {
+        setFormError('Local não pode exceder 100 caracteres.');
+        return;
+    }
      // Simple time format validation (HH:MM)
     if (!/^\d{2}:\d{2}$/.test(horario)) {
       setFormError('Formato de horário inválido. Use HH:MM (ex: 16:00).');
@@ -106,6 +110,12 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
     }
 
     const formattedDate = format(data, 'dd/MM/yyyy');
+    // Basic date format check (simple)
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate)) {
+      setFormError('Formato de data inválido. Use DD/MM/YYYY.');
+      return;
+    }
+
     const eventoData: Omit<Evento, 'id'> | Evento = {
       ...(evento && { id: evento.id }), // Include id if editing
       titulo,
@@ -127,17 +137,18 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
             {formError && <p className="text-sm text-destructive">{formError}</p>}
             <div className="space-y-1">
                 <Label htmlFor="titulo">Título</Label>
-                <Input id="titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={100} required />
+                <Input id="titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={100} required aria-required="true" />
             </div>
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-1">
-                    <Label htmlFor="data">Data</Label>
+                    <Label htmlFor="data">Data (DD/MM/YYYY)</Label>
                      <Popover>
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
                             className={`w-full justify-start text-left font-normal ${!data && "text-muted-foreground"}`}
                             id="data"
+                            aria-required="true"
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {data ? format(data, "dd/MM/yyyy") : <span>Escolha uma data</span>}
@@ -155,12 +166,12 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
                  </div>
                  <div className="space-y-1">
                     <Label htmlFor="horario">Horário (HH:MM)</Label>
-                    <Input id="horario" value={horario} onChange={(e) => setHorario(e.target.value)} placeholder="16:00" pattern="\d{2}:\d{2}" required />
+                    <Input id="horario" value={horario} onChange={(e) => setHorario(e.target.value)} placeholder="16:00" pattern="\d{2}:\d{2}" required aria-required="true" />
                 </div>
             </div>
              <div className="space-y-1">
                 <Label htmlFor="local">Local</Label>
-                <Input id="local" value={local} onChange={(e) => setLocal(e.target.value)} required />
+                <Input id="local" value={local} onChange={(e) => setLocal(e.target.value)} maxLength={100} required aria-required="true" />
             </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
@@ -192,10 +203,13 @@ function AdminDashboard() {
   const fetchEventos = async () => {
     setLoading(true);
     try {
+      // Fetching up to 20 events, ordered by date for CMS display
+      // Using getAllEventosCMS which already fetches all and sorts, limit can be applied here if needed
+      // However, for CMS it's often better to see all events.
       const data = await getAllEventosCMS();
       setEventos(data);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os eventos." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Erro", description: error.message || "Não foi possível carregar os eventos." });
     } finally {
       setLoading(false);
     }
@@ -273,7 +287,7 @@ function AdminDashboard() {
           isSaving={isSaving}
         />
       ) : (
-         <Button onClick={handleAddNew} className="mb-6 bg-primary hover:bg-primary/90">
+         <Button onClick={handleAddNew} className="mb-6 bg-primary hover:bg-primary/90" aria-label="Adicionar novo evento">
            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Novo Evento
         </Button>
       )}
@@ -282,17 +296,30 @@ function AdminDashboard() {
          <h2 className="text-xl font-semibold">Eventos Cadastrados</h2>
         {loading ? (
              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg bg-muted" />)}
+                {/* Replace Skeleton with styled div */}
+                {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-24 w-full rounded-lg bg-muted/50 animate-pulse p-4 flex justify-between items-center">
+                        <div className="space-y-2 flex-grow mr-4">
+                            <div className="h-5 w-3/4 bg-muted rounded"></div>
+                            <div className="h-4 w-1/2 bg-muted rounded"></div>
+                            <div className="h-4 w-1/3 bg-muted rounded"></div>
+                        </div>
+                        <div className="flex gap-2">
+                            <div className="h-9 w-9 bg-muted rounded"></div>
+                            <div className="h-9 w-9 bg-muted rounded"></div>
+                        </div>
+                    </div>
+                ))}
              </div>
         ) : eventos.length === 0 ? (
           <p className="text-muted-foreground">Nenhum evento cadastrado.</p>
         ) : (
           eventos.map((evento) => (
-            <Card key={evento.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-4">
+            <Card key={evento.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-4 bg-card border shadow-sm">
               <div className="flex-grow space-y-1">
                  <p className="font-semibold text-primary">{evento.titulo}</p>
                  <p className="text-sm text-muted-foreground">
-                   <span className="inline-flex items-center mr-4"><CalendarIcon className="h-3 w-3 mr-1"/> {evento.data}</span>
+                   <span className="inline-flex items-center mr-4"><CalendarIcon className="h-3 w-3 mr-1 text-muted-foreground"/> {evento.data}</span>
                    <span className="inline-flex items-center">{/* <Clock className="h-3 w-3 mr-1"/> */} {evento.horario}</span>
                  </p>
                  <p className="text-sm text-muted-foreground">
@@ -300,13 +327,13 @@ function AdminDashboard() {
                  </p>
               </div>
                <div className="flex gap-2 flex-shrink-0 mt-2 sm:mt-0">
-                <Button variant="outline" size="sm" onClick={() => handleEdit(evento)}>
+                <Button variant="outline" size="sm" onClick={() => handleEdit(evento)} aria-label={`Editar evento ${evento.titulo}`}>
                     <Edit className="h-4 w-4" />
                  </Button>
 
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
-                         <Button variant="destructive" size="sm">
+                         <Button variant="destructive" size="sm" aria-label={`Excluir evento ${evento.titulo}`}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </AlertDialogTrigger>
@@ -363,3 +390,5 @@ export default function AdminPage() {
   // If authenticated and not showing login, show dashboard
   return <AdminDashboard />;
 }
+
+    

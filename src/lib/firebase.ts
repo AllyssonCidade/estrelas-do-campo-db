@@ -13,7 +13,8 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  serverTimestamp // Use serverTimestamp if storing dates as Timestamps
+  serverTimestamp, // Use serverTimestamp if storing dates as Timestamps
+  enableIndexedDbPersistence // Import for offline persistence
 } from "firebase/firestore";
 import type { Evento, Noticia } from '@/lib/types';
 import { format, parse, compareAsc, isToday, isFuture } from 'date-fns';
@@ -32,6 +33,25 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 const eventosCol = collection(db, "eventos");
 const noticiasCol = collection(db, "noticias");
+
+// Enable Firestore offline persistence
+// Call this early, ideally right after initializing Firestore
+try {
+    enableIndexedDbPersistence(db)
+      .then(() => console.log("Firestore offline persistence enabled."))
+      .catch((err) => {
+        if (err.code == 'failed-precondition') {
+          console.warn("Firestore persistence failed: Multiple tabs open? Only enable in one tab.");
+        } else if (err.code == 'unimplemented') {
+          console.warn("Firestore persistence failed: Browser not supported?");
+        } else {
+          console.error("Firestore persistence failed:", err);
+        }
+      });
+} catch (error) {
+    console.error("Error enabling Firestore persistence:", error);
+}
+
 
 // --- Sample Data (Fallback if Firestore is empty) ---
 const sampleEventos: Omit<Evento, 'id'>[] = [
@@ -52,14 +72,30 @@ const sampleNoticias: Omit<Noticia, 'id'>[] = [
 // Ensures robustness against invalid formats
 const parseDateString = (dateStr: string): Date | null => {
   try {
-    const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
-    // Check if the parsed date is valid
-    if (isNaN(parsedDate.getTime())) {
+    // Ensure the input is a string
+    if (typeof dateStr !== 'string') {
+        console.warn("parseDateString received non-string input:", dateStr);
         return null;
     }
-    // Optional: Check if the formatted date matches the input to catch month/day rollovers
-    if (format(parsedDate, 'dd/MM/yyyy') !== dateStr) {
+    // Basic regex check for DD/MM/YYYY format before parsing
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+        console.warn("Invalid date format string:", dateStr);
         return null;
+    }
+    const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
+    // Check if the parsed date is valid (e.g., doesn't result in NaN)
+    if (isNaN(parsedDate.getTime())) {
+        console.warn("Parsed date resulted in NaN:", dateStr);
+        return null;
+    }
+    // Optional: Check if the formatted date matches the input to catch month/day rollovers (e.g., 31/04/2025)
+    // This check might be too strict depending on whether date-fns automatically corrects invalid days/months.
+    // If date-fns corrects (e.g., 31/04 becomes 01/05), this check prevents that.
+    // If correction is acceptable, remove this check.
+    if (format(parsedDate, 'dd/MM/yyyy') !== dateStr) {
+        console.warn("Date string mismatch after parsing (potential day/month rollover):", dateStr, format(parsedDate, 'dd/MM/yyyy'));
+        // Decide if this should be treated as an error or allowed
+        // return null; // Treat as error
     }
     return parsedDate;
   } catch (e) {
@@ -70,26 +106,22 @@ const parseDateString = (dateStr: string): Date | null => {
 
 // --- Data Fetching Functions ---
 
-// Fetch Events
+// Fetch Events (for public view)
 export async function getEventos(): Promise<Evento[]> {
   let eventos: Evento[] = [];
   try {
-    // Attempt to fetch from Firestore
-    // NOTE: Ordering by string 'data' is not reliable for date sorting.
-    // Fetching all and sorting client-side is necessary with this data format.
-    // Consider using Firestore Timestamps for 'data' field in the future.
+    // Fetching all and sorting client-side because string date 'data' requires it.
+    // Consider using Firestore Timestamps for 'data' field for server-side filtering/sorting.
     const q = query(eventosCol); // Fetch all, sort later
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty && process.env.NODE_ENV === 'development') {
-       // Use sample data if Firestore is empty (useful for development)
-       console.log("Firestore 'eventos' empty, using sample data.");
+       console.log("Firestore 'eventos' empty, using sample data for public view.");
        eventos = sampleEventos.map((evento, index) => ({ ...evento, id: `sample-${index}` }));
     } else {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Basic validation
-        if (data.titulo && data.data && data.horario && data.local) {
+        if (data.titulo && data.data && data.horario && data.local && typeof data.data === 'string') {
             eventos.push({
                 id: doc.id,
                 titulo: data.titulo,
@@ -98,7 +130,7 @@ export async function getEventos(): Promise<Evento[]> {
                 local: data.local,
             });
         } else {
-            console.warn(`Invalid event data found for doc id: ${doc.id}`, data);
+            console.warn(`Invalid or missing event data found for doc id: ${doc.id}`, data);
         }
       });
     }
@@ -108,7 +140,6 @@ export async function getEventos(): Promise<Evento[]> {
         console.log("Using sample event data due to fetch error.");
         eventos = sampleEventos.map((evento, index) => ({ ...evento, id: `sample-${index}` }));
      } else {
-        // In production, you might want to throw the error or return an empty array
         return []; // Return empty array on error in production
      }
   }
@@ -122,17 +153,16 @@ export async function getEventos(): Promise<Evento[]> {
       ...evento,
       parsedDate: parseDateString(evento.data) // Parse date for filtering/sorting
     }))
-    .filter(evento => evento.parsedDate && (isToday(evento.parsedDate) || isFuture(evento.parsedDate)))
+    .filter(evento => evento.parsedDate && (isToday(evento.parsedDate) || isFuture(evento.parsedDate))) // Keep only valid future/today dates
     .sort((a, b) => {
-        // Should not happen if filter works, but check anyway
-        if (!a.parsedDate || !b.parsedDate) return 0;
+        if (!a.parsedDate || !b.parsedDate) return 0; // Should not happen after filter
         return compareAsc(a.parsedDate, b.parsedDate); // Sort ascending by date
     })
     // Remove the temporary parsedDate property before returning
     .map(({ parsedDate, ...rest }) => rest);
 
 
-  return filteredAndSortedEventos.slice(0, 20); // Limit to 20
+  return filteredAndSortedEventos.slice(0, 20); // Limit to 20 for public view
 }
 
 
@@ -140,7 +170,7 @@ export async function getEventos(): Promise<Evento[]> {
 export async function getNoticias(): Promise<Noticia[]> {
   let noticias: Noticia[] = [];
   try {
-     // Fetching with string date ordering is still suboptimal. Fetch all and sort.
+     // Fetching with string date ordering is suboptimal. Fetch all and sort client-side.
     const q = query(noticiasCol); // Fetch all, sort later
     const querySnapshot = await getDocs(q);
 
@@ -150,7 +180,7 @@ export async function getNoticias(): Promise<Noticia[]> {
     } else {
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-             if (data.titulo && data.texto && data.data) {
+             if (data.titulo && data.texto && data.data && typeof data.data === 'string') {
                  noticias.push({
                     id: doc.id,
                     titulo: data.titulo,
@@ -159,7 +189,7 @@ export async function getNoticias(): Promise<Noticia[]> {
                     data: data.data,
                  });
              } else {
-                 console.warn(`Invalid noticia data found for doc id: ${doc.id}`, data);
+                 console.warn(`Invalid or missing noticia data found for doc id: ${doc.id}`, data);
              }
         });
     }
@@ -180,8 +210,9 @@ export async function getNoticias(): Promise<Noticia[]> {
             ...noticia,
             parsedDate: parseDateString(noticia.data)
         }))
+        .filter(noticia => noticia.parsedDate) // Keep only valid dates
         .sort((a, b) => {
-            if (!a.parsedDate || !b.parsedDate) return 0;
+            if (!a.parsedDate || !b.parsedDate) return 0; // Should not happen after filter
             return compareAsc(b.parsedDate, a.parsedDate); // Sort descending
         })
         .map(({ parsedDate, ...rest }) => rest);
@@ -194,9 +225,18 @@ export async function getNoticias(): Promise<Noticia[]> {
 
 // Add Event
 export async function addEvento(eventoData: Omit<Evento, 'id'>): Promise<string> {
+  // Validate data before sending to Firestore
+   if (!eventoData.titulo || !eventoData.data || !eventoData.horario || !eventoData.local) {
+       throw new Error("Todos os campos são obrigatórios.");
+   }
+   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(eventoData.data) || !parseDateString(eventoData.data)) {
+       throw new Error("Formato de data inválido. Use DD/MM/YYYY.");
+   }
+    if (!/^\d{2}:\d{2}$/.test(eventoData.horario)) {
+      throw new Error('Formato de horário inválido. Use HH:MM (ex: 16:00).');
+    }
+
   try {
-    // Optional: Add server timestamp if needed
-    // const dataWithTimestamp = { ...eventoData, createdAt: serverTimestamp() };
     const docRef = await addDoc(eventosCol, eventoData);
     return docRef.id;
   } catch (error) {
@@ -207,6 +247,14 @@ export async function addEvento(eventoData: Omit<Evento, 'id'>): Promise<string>
 
 // Update Event
 export async function updateEvento(id: string, eventoData: Partial<Omit<Evento, 'id'>>): Promise<void> {
+    // Validate data before sending to Firestore
+    if (eventoData.data && (!/^\d{2}\/\d{2}\/\d{4}$/.test(eventoData.data) || !parseDateString(eventoData.data))) {
+       throw new Error("Formato de data inválido. Use DD/MM/YYYY.");
+   }
+   if (eventoData.horario && !/^\d{2}:\d{2}$/.test(eventoData.horario)) {
+      throw new Error('Formato de horário inválido. Use HH:MM (ex: 16:00).');
+    }
+
   try {
     const eventDoc = doc(db, "eventos", id);
     await updateDoc(eventDoc, eventoData);
@@ -227,15 +275,17 @@ export async function deleteEvento(id: string): Promise<void> {
   }
 }
 
-// Fetch All Events for CMS (no date filtering/sorting needed here initially)
+// Fetch All Events for CMS (sorted by date descending)
 export async function getAllEventosCMS(): Promise<Evento[]> {
     let eventos: Evento[] = [];
     try {
-        const q = query(eventosCol, orderBy("data", "desc")); // Order by date string desc for CMS view
+        // Fetch all documents first
+        const q = query(eventosCol);
         const querySnapshot = await getDocs(q);
+
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-             if (data.titulo && data.data && data.horario && data.local) {
+             if (data.titulo && data.data && data.horario && data.local && typeof data.data === 'string') {
                  eventos.push({
                      id: doc.id,
                      titulo: data.titulo,
@@ -243,6 +293,8 @@ export async function getAllEventosCMS(): Promise<Evento[]> {
                      horario: data.horario,
                      local: data.local,
                  });
+             } else {
+                 console.warn(`Invalid or missing CMS event data for doc id: ${doc.id}`, data);
              }
         });
          // No sample data fallback needed for CMS usually
@@ -250,43 +302,22 @@ export async function getAllEventosCMS(): Promise<Evento[]> {
         console.error("Error fetching all events for CMS:", error);
         throw new Error("Falha ao carregar eventos para o CMS.");
     }
-     // Sort by actual date descending for CMS view
+     // Sort by actual date descending for CMS view after fetching
     return eventos
         .map(evento => ({
             ...evento,
             parsedDate: parseDateString(evento.data)
         }))
+        .filter(evento => evento.parsedDate) // Keep only valid dates
         .sort((a, b) => {
+            // Should not happen after filter, but check anyway
             if (!a.parsedDate || !b.parsedDate) return 0;
             return compareAsc(b.parsedDate, a.parsedDate); // Sort descending
         })
-        .map(({ parsedDate, ...rest }) => rest);
+        .map(({ parsedDate, ...rest }) => rest); // Remove temporary parsedDate
 }
 
 
 export { db };
 
-// Enable Firestore offline persistence
-// This is typically done closer to the Firestore initialization,
-// but placing it here ensures it's called.
-// Note: Offline persistence might require specific Firebase SDK setup or might be enabled by default in newer web SDKs.
-// Check Firebase documentation for enabling persistence in Web Modular SDK.
-// Example (might need adjustments based on Firebase version):
-/*
-import { enableIndexedDbPersistence } from "firebase/firestore";
-
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled
-      // in one tab at a time.
-      console.warn("Firestore persistence failed: Multiple tabs open?");
-    } else if (err.code == 'unimplemented') {
-      // The current browser does not support all of the
-      // features required to enable persistence
-      console.warn("Firestore persistence failed: Browser not supported?");
-    }
-  });
-*/
-// For simplicity in MVP, we rely on standard browser caching and Next.js revalidation.
-// Explicit Firestore offline cache can be added later if needed.
+    
