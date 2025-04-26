@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 
 export default function ContatoPage() {
-  const whatsappNumber = "5511999999999"; // Placeholder number
+  const whatsappNumber = "5571997248724";
   const whatsappMessage = "Olá, sou fã do Estrelas do Campo e quero saber mais!";
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 

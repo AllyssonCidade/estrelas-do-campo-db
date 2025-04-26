@@ -16,7 +16,8 @@ function HeroSection() {
   return (
      // Updated section with background image, overlay, and specific heights
     <section className="relative bg-cover bg-center text-white py-16 sm:py-24 px-4 text-center overflow-hidden h-[250px] sm:h-[350px] flex flex-col items-center justify-center"
-             style={{ backgroundImage: "url('https://images.unsplash.com/photo-1511886929748-85311a79e379?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3')" }}>
+             style={{ backgroundImage: "url('https://videos.openai.com/vg-assets/assets%2Ftask_01jss3fs1rfcqaca6f80bpj9b2%2F1745673059_img_0.webp?st=2025-04-26T16%3A30%3A07Z&se=2025-05-02T17%3A30%3A07Z&sks=b&skt=2025-04-26T16%3A30%3A07Z&ske=2025-05-02T17%3A30%3A07Z&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skoid=3d249c53-07fa-4ba4-9b65-0bf8eb4ea46a&skv=2019-02-02&sv=2018-11-09&sr=b&sp=r&spr=https%2Chttp&sig=day635gbJKlLcH5FifE0gx%2BoBbbQgxEDxy11bjacLvM%3D&az=oaivgprodscus')", backgroundSize: "cover",
+    backgroundPosition: "bottom" }}>
       {/* Dark overlay for better text readability */}
       <div className="absolute inset-0 bg-black/30 z-0"></div>
 
@@ -100,7 +101,7 @@ function ApresentacaoSection() {
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={{ ...itemVariants, visible: { ...itemVariants.visible, transition: { ...itemVariants.visible.transition, delay: 0.4 } } }}>
             <div className="overflow-hidden rounded-lg shadow-md mb-4">
               <Image
-                src="https://via.placeholder.com/300x200/22C55E/FFFFFF?text=Futebol+Feminino"
+                src="https://videos.openai.com/vg-assets/assets%2Ftask_01jss2fn50fert2678jpc003k7%2F1745672019_img_0.webp?st=2025-04-26T16%3A30%3A07Z&se=2025-05-02T17%3A30%3A07Z&sks=b&skt=2025-04-26T16%3A30%3A07Z&ske=2025-05-02T17%3A30%3A07Z&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skoid=3d249c53-07fa-4ba4-9b65-0bf8eb4ea46a&skv=2019-02-02&sv=2018-11-09&sr=b&sp=r&spr=https%2Chttp&sig=%2Bw0So5qPPBYK9gwcO5BPtxQHS5n1LKRB%2BpujDFfjYFs%3D&az=oaivgprodscus"
                 alt="Time de futebol feminino celebrando união"
                 width={300}
                 height={200}
@@ -115,7 +116,7 @@ function ApresentacaoSection() {
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={{ ...itemVariants, visible: { ...itemVariants.visible, transition: { ...itemVariants.visible.transition, delay: 0.6 } } }}>
             <div className="overflow-hidden rounded-lg shadow-md mb-4">
               <Image
-                src="https://via.placeholder.com/300x200/FBBF24/1F2937?text=Jogadora"
+                src="https://videos.openai.com/vg-assets/assets%2Ftask_01jss2tcw6e3rbh8xy20b8gejb%2F1745672358_img_0.webp?st=2025-04-26T16%3A30%3A07Z&se=2025-05-02T17%3A30%3A07Z&sks=b&skt=2025-04-26T16%3A30%3A07Z&ske=2025-05-02T17%3A30%3A07Z&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skoid=3d249c53-07fa-4ba4-9b65-0bf8eb4ea46a&skv=2019-02-02&sv=2018-11-09&sr=b&sp=r&spr=https%2Chttp&sig=c8T4mDffobMLQzomeJPw3ISH5ti%2Fvirla6JXstxTjAI%3D&az=oaivgprodscus"
                 alt="Jogadora de futebol chutando a bola com energia"
                 width={300}
                 height={200}
@@ -149,7 +150,7 @@ function LocaisSection() {
       nome: "Campo Municipal",
       endereco: "Rua do Esporte, 123, Cidade",
       descricao: "Nosso lar para treinos e jogos!",
-      imagem: "https://via.placeholder.com/150/cccccc/000000?text=Campo",
+      imagem: "https://tse1.mm.bing.net/th?id=OIP.CDutYtSWQBsO7bDMlEvwCwHaE6&pid=Api&P=0&h=180",
       alt: "Imagem do Campo Municipal",
       icon: <Map className="h-6 w-6 text-primary" />
     },
@@ -157,7 +158,7 @@ function LocaisSection() {
       nome: "Estádio Central",
       endereco: "Av. Central, 456, Cidade",
       descricao: "Palco dos grandes amistosos!",
-      imagem: "https://via.placeholder.com/150/cccccc/000000?text=Estádio",
+      imagem: "https://tse1.mm.bing.net/th?id=OIP.7B7m-uxN9RFVzWsLPeowIAHaEa&pid=Api&P=0&h=180",
       alt: "Imagem do Estádio Central",
       icon: <Building className="h-6 w-6 text-primary" />
     }
