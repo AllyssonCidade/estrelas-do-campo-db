@@ -14,27 +14,37 @@ import { motion } from 'framer-motion'; // Import motion for animations
 // --- Hero Section ---
 function HeroSection() {
   return (
-    <section className="relative bg-primary text-primary-foreground py-16 sm:py-24 px-4 text-center overflow-hidden">
-      {/* Subtle background pattern/image */}
-       <div
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1511886929748-85311a79e379?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.0.3')] bg-cover bg-center opacity-20"
-          style={{ filter: 'grayscale(50%)' }} // Make it more subtle
-        />
+     // Updated section with background image, overlay, and specific heights
+    <section className="relative bg-cover bg-center text-white py-16 sm:py-24 px-4 text-center overflow-hidden h-[250px] sm:h-[350px] flex flex-col items-center justify-center"
+             style={{ backgroundImage: "url('https://images.unsplash.com/photo-1511886929748-85311a79e379?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3')" }}>
+      {/* Dark overlay for better text readability */}
+      <div className="absolute inset-0 bg-black/30 z-0"></div>
+
+      {/* Content wrapper */}
       <div className="relative z-10 max-w-3xl mx-auto">
         <motion.h1
            initial={{ opacity: 0, y: -20 }}
            animate={{ opacity: 1, y: 0 }}
            transition={{ duration: 0.5 }}
-           className="text-3xl sm:text-4xl font-bold mb-4 text-white" // Ensure white text
-           style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.3)' }} // Add subtle shadow
+           className="text-4xl sm:text-5xl font-bold mb-4 text-accent" // Changed text color to accent (gold)
+           style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }} // Adjusted shadow for gold text
         >
-          Estrelas do Campo: Força, Cultura e Inclusão
+          Estrelas do Campo
         </motion.h1>
+         <motion.h2
+           initial={{ opacity: 0, y: -20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.5, delay: 0.1 }}
+           className="text-xl sm:text-2xl font-semibold mb-4 text-white" // Secondary title remains white
+           style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.3)' }}
+        >
+          Força, Cultura e Inclusão
+        </motion.h2>
         <motion.p
            initial={{ opacity: 0, y: 20 }}
            animate={{ opacity: 1, y: 0 }}
            transition={{ duration: 0.5, delay: 0.2 }}
-           className="text-lg sm:text-xl mb-8 text-white" // Ensure white text
+           className="text-base sm:text-lg mb-8 text-white" // Ensure white text
         >
           Apoie o futebol feminino e junte-se à nossa comunidade!
         </motion.p>
@@ -46,7 +56,9 @@ function HeroSection() {
           <Button
             asChild
             size="lg"
-            className="bg-accent hover:bg-yellow-500 text-accent-foreground font-semibold shadow-md transition-colors duration-200"
+            // Use the accent variant for gold, hover defined in button component
+            variant="accent"
+            className="font-semibold shadow-md transition-colors duration-200 hover:bg-yellow-500" // Explicit hover for accent
             onClick={(e) => {
               e.preventDefault(); // Prevent default link behavior if needed
               const agendaSection = document.getElementById('agenda-section');
@@ -229,7 +241,7 @@ function AgendaSection() {
       y: 0,
       transition: {
         delay: i * 0.1, // Stagger animation
-        duration: 0.3, // Faster fade-in
+        duration: 0.2, // Faster fade-in as requested
       },
     }),
   };
