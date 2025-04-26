@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-inter), sans-serif;
 }
@@ -9,19 +14,19 @@ body {
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
-    --foreground: 215 28% 17%; /* Dark Gray */
+    --foreground: 222.2 84% 4.9%; /* Dark Gray */ /* Updated contrast */
     --card: 0 0% 100%; /* White */
-    --card-foreground: 215 28% 17%; /* Dark Gray */
+    --card-foreground: 222.2 84% 4.9%; /* Dark Gray */
     --popover: 0 0% 100%; /* White */
-    --popover-foreground: 215 28% 17%; /* Dark Gray */
+    --popover-foreground: 222.2 84% 4.9%; /* Dark Gray */
     --primary: 145 63% 49%; /* Green */
     --primary-foreground: 0 0% 100%; /* White */
     --secondary: 210 40% 96.1%; /* Light Gray */
-    --secondary-foreground: 215 28% 17%; /* Dark Gray */
+    --secondary-foreground: 222.2 47.4% 11.2%; /* Darker Gray for secondary text */
     --muted: 210 40% 96.1%; /* Light Gray */
-    --muted-foreground: 215 14% 34%; /* Muted Gray */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Muted Gray */
     --accent: 45 93% 58%; /* Gold */
-    --accent-foreground: 215 28% 17%; /* Dark Gray */
+    --accent-foreground: 222.2 47.4% 11.2%; /* Dark Gray on Gold */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 214.3 31.8% 91.4%; /* Light Border */
@@ -34,10 +39,10 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
 
-    /* Custom Sidebar colors (adjust if needed, default uses primary/accent mapping) */
+    /* Custom Sidebar colors */
     --sidebar-background: hsl(var(--primary)); /* Green */
     --sidebar-foreground: hsl(var(--primary-foreground)); /* White */
-    --sidebar-primary: hsl(var(--accent)); /* Gold for emphasis? */
+    --sidebar-primary: hsl(var(--accent)); /* Gold */
     --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* Dark Gray */
     --sidebar-accent: hsla(0, 0%, 100%, 0.1); /* Lighter green/white for hover */
     --sidebar-accent-foreground: hsl(var(--primary-foreground)); /* White */
@@ -46,25 +51,25 @@ body {
   }
 
   .dark {
-    /* Define dark mode colors if needed in the future, for now use light mode defaults */
-    --background: 215 28% 17%; /* Dark Gray */
-    --foreground: 0 0% 98%; /* White */
-    --card: 215 28% 17%; /* Dark Gray */
-    --card-foreground: 0 0% 98%; /* White */
-    --popover: 215 28% 17%; /* Dark Gray */
-    --popover-foreground: 0 0% 98%; /* White */
+    /* Dark mode colors remain same as previous version */
+    --background: 222.2 84% 4.9%; /* Dark Gray */
+    --foreground: 210 40% 98%; /* Almost White */
+    --card: 222.2 84% 4.9%; /* Dark Gray */
+    --card-foreground: 210 40% 98%; /* Almost White */
+    --popover: 222.2 84% 4.9%; /* Dark Gray */
+    --popover-foreground: 210 40% 98%; /* Almost White */
     --primary: 145 63% 49%; /* Green */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 215 28% 25%; /* Darker Gray */
-    --secondary-foreground: 0 0% 98%; /* White */
-    --muted: 215 28% 25%; /* Darker Gray */
-    --muted-foreground: 215 14% 64%; /* Lighter Muted Gray */
+    --secondary: 217.2 32.6% 17.5%; /* Darker Gray */
+    --secondary-foreground: 210 40% 98%; /* Almost White */
+    --muted: 217.2 32.6% 17.5%; /* Darker Gray */
+    --muted-foreground: 215 20.2% 65.1%; /* Lighter Muted Gray */
     --accent: 45 93% 58%; /* Gold */
-    --accent-foreground: 215 28% 17%; /* Dark Gray */
+    --accent-foreground: 222.2 47.4% 11.2%; /* Dark Gray on Gold */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 215 28% 25%; /* Darker Border */
-    --input: 215 28% 25%;
+    --border: 217.2 32.6% 17.5%; /* Darker Border */
+    --input: 217.2 32.6% 17.5%;
     --ring: 145 63% 49%; /* Green */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -104,5 +109,15 @@ body {
   }
   .sheet-content[data-state="closed"] {
     transform: translateX(100%);
+  }
+
+  /* Add fade-in animation class */
+  .fade-in {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }

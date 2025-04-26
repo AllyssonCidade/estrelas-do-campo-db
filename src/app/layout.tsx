@@ -1,10 +1,12 @@
 
-import type {Metadata} from 'next';
+import type { Metadata } from 'next';
 import { Inter } from 'next/font/google'; // Import Inter font
 import './globals.css';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { cn } from '@/lib/utils';
+import { AuthProvider } from '@/context/AuthContext'; // Import AuthProvider
+import { Toaster } from "@/components/ui/toaster"; // Import Toaster
 
 // Setup Inter font
 const inter = Inter({
@@ -28,11 +30,15 @@ export default function RootLayout({
           "min-h-screen bg-background font-sans antialiased flex flex-col",
           inter.variable // Apply font variable
         )}>
-        <Header />
-        <main className="flex-grow container mx-auto max-w-[800px] px-4 py-8">
-          {children}
-        </main>
-        <Footer />
+         <AuthProvider> {/* Wrap content with AuthProvider */}
+            <Header />
+            {/* Remove default container padding/max-width to allow full-width sections */}
+            <main className="flex-grow">
+              {children}
+            </main>
+            <Footer />
+            <Toaster /> {/* Add Toaster for displaying messages */}
+        </AuthProvider>
       </body>
     </html>
   );
