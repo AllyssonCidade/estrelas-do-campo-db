@@ -3,39 +3,45 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { getAllEventosCMS, addEvento, updateEvento, deleteEvento } from '@/lib/firebase';
+// import { useAuth } from '@/context/AuthContext'; // Keep AuthContext for password management
+// Removed Firestore imports: import { getAllEventosCMS, addEvento, updateEvento, deleteEvento } from '@/lib/firebase';
+import { getAllEventosCMSApi, addEventoApi, updateEventoApi, deleteEventoApi } from '@/lib/api'; // Import API functions
 import type { Evento } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { format, parse } from 'date-fns';
+// import { format, parse } from 'date-fns'; // Keep date-fns if needed for date picker display
 import { CalendarIcon, PlusCircle, Edit, Trash2, LogOut, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { format, parse, isValid } from 'date-fns';
 
 
 // --- Admin Login Component ---
-function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+// Replaces AuthContext logic for simple password check
+function AdminLogin({ onLoginSuccess }: { onLoginSuccess: (password: string) => void }) {
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
-  const { login } = useAuth();
+  // Use environment variable for password check
+  const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "estrelas123";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const success = await login(password);
-    if (success) {
-      onLoginSuccess();
+    // Simple password check
+    if (password === correctPassword) {
+       // Store password temporarily in parent state for API calls
+       // **Security Note:** This is basic protection. For production, use proper auth.
+       onLoginSuccess(password);
     } else {
       setError('Senha incorreta.');
     }
-    setLoading(false);
+    setLoading(false); // Stop loading indicator
   };
 
   return (
@@ -81,11 +87,39 @@ type EventFormProps = {
 function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
   const [titulo, setTitulo] = React.useState(evento?.titulo || '');
   const [data, setData] = React.useState<Date | undefined>(
+     // Attempt to parse the string date from the event object
     evento?.data ? parse(evento.data, 'dd/MM/yyyy', new Date()) : undefined
   );
   const [horario, setHorario] = React.useState(evento?.horario || '');
   const [local, setLocal] = React.useState(evento?.local || '');
   const [formError, setFormError] = React.useState('');
+
+  React.useEffect(() => {
+      // Update form fields if the 'evento' prop changes (when editing)
+      setTitulo(evento?.titulo || '');
+      setData(evento?.data ? parse(evento.data, 'dd/MM/yyyy', new Date()) : undefined);
+      setHorario(evento?.horario || '');
+      setLocal(evento?.local || '');
+      setFormError(''); // Clear errors when event changes
+  }, [evento]);
+
+
+    // Helper function to parse DD/MM/YYYY string to Date object robustly
+    const parseDateString = (dateStr: string): Date | null => {
+      try {
+        if (typeof dateStr !== 'string' || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+            return null;
+        }
+        const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
+        // Check if the parsed date is valid and components match
+        if (!isValid(parsedDate) || format(parsedDate, 'dd/MM/yyyy') !== dateStr) {
+            return null;
+        }
+        return parsedDate;
+      } catch (e) {
+        return null;
+      }
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,9 +143,10 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
       return;
     }
 
+    // Format date back to DD/MM/YYYY string for API
     const formattedDate = format(data, 'dd/MM/yyyy');
-    // Basic date format check (simple)
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate)) {
+    // Basic date format check (redundant but safe)
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate) || !parseDateString(formattedDate)) {
       setFormError('Formato de data inválido. Use DD/MM/YYYY.');
       return;
     }
@@ -119,7 +154,7 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
     const eventoData: Omit<Evento, 'id'> | Evento = {
       ...(evento && { id: evento.id }), // Include id if editing
       titulo,
-      data: formattedDate,
+      data: formattedDate, // Send as string
       horario,
       local,
     };
@@ -151,7 +186,8 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
                             aria-required="true"
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {data ? format(data, "dd/MM/yyyy") : <span>Escolha uma data</span>}
+                            {/* Ensure data is a Date object before formatting */}
+                            {data instanceof Date && isValid(data) ? format(data, "dd/MM/yyyy") : <span>Escolha uma data</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -190,26 +226,24 @@ function EventForm({ evento, onSave, onCancel, isSaving }: EventFormProps) {
 
 
 // --- Admin Dashboard Component ---
-function AdminDashboard() {
-  const { logout } = useAuth();
+function AdminDashboard({ adminPassword, onLogout }: { adminPassword: string, onLogout: () => void }) {
   const router = useRouter();
   const [eventos, setEventos] = React.useState<Evento[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingEvento, setEditingEvento] = React.useState<Evento | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null); // Track which item is being deleted
   const { toast } = useToast();
 
   const fetchEventos = async () => {
     setLoading(true);
     try {
-      // Fetching up to 20 events, ordered by date for CMS display
-      // Using getAllEventosCMS which already fetches all and sorts, limit can be applied here if needed
-      // However, for CMS it's often better to see all events.
-      const data = await getAllEventosCMS();
+      // Fetching all events for CMS, sorted desc by API
+      const data = await getAllEventosCMSApi();
       setEventos(data);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Erro", description: error.message || "Não foi possível carregar os eventos." });
+      toast({ variant: "destructive", title: "Erro ao Carregar", description: error.message || "Não foi possível carregar os eventos da API." });
     } finally {
       setLoading(false);
     }
@@ -220,12 +254,12 @@ function AdminDashboard() {
   }, []);
 
   const handleLogout = () => {
-    logout();
+    onLogout(); // Call the logout handler passed from parent
     router.push('/'); // Redirect to home after logout
   };
 
   const handleAddNew = () => {
-    setEditingEvento(null);
+    setEditingEvento(null); // Ensure editingEvento is null for adding
     setIsFormOpen(true);
   };
 
@@ -234,36 +268,42 @@ function AdminDashboard() {
     setIsFormOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+ const handleDelete = async (id: string) => {
+    setDeletingId(id); // Show loader on the specific delete button
     try {
-      await deleteEvento(id);
+      await deleteEventoApi(id, adminPassword); // Pass password
       toast({ title: "Sucesso", description: "Evento deletado." });
       fetchEventos(); // Refresh list
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Erro", description: error.message || "Falha ao deletar evento." });
+      toast({ variant: "destructive", title: "Erro ao Deletar", description: error.message || "Falha ao deletar evento via API." });
+    } finally {
+      setDeletingId(null); // Hide loader
     }
   };
+
 
  const handleSave = async (eventoData: Omit<Evento, 'id'> | Evento) => {
     setIsSaving(true);
     try {
-      if ('id' in eventoData && eventoData.id) { // Check if it's an update (has id)
-        await updateEvento(eventoData.id, {
+      const dataToSend: Omit<Evento, 'id'> = {
           titulo: eventoData.titulo,
           data: eventoData.data,
           horario: eventoData.horario,
           local: eventoData.local,
-        });
+      };
+
+      if ('id' in eventoData && eventoData.id) { // Check if it's an update (has id)
+        await updateEventoApi(eventoData.id, dataToSend, adminPassword); // Pass password
         toast({ title: "Sucesso", description: "Evento atualizado." });
       } else { // It's a new event
-        await addEvento(eventoData as Omit<Evento, 'id'>);
+        await addEventoApi(dataToSend, adminPassword); // Pass password
         toast({ title: "Sucesso", description: "Evento adicionado." });
       }
       setIsFormOpen(false);
       setEditingEvento(null);
       fetchEventos(); // Refresh list
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Erro ao Salvar", description: error.message || "Não foi possível salvar o evento." });
+       toast({ variant: "destructive", title: "Erro ao Salvar", description: error.message || "Não foi possível salvar o evento via API." });
     } finally {
       setIsSaving(false);
     }
@@ -283,7 +323,7 @@ function AdminDashboard() {
         <EventForm
           evento={editingEvento}
           onSave={handleSave}
-          onCancel={() => setIsFormOpen(false)}
+          onCancel={() => { setIsFormOpen(false); setEditingEvento(null); }} // Reset editing state on cancel
           isSaving={isSaving}
         />
       ) : (
@@ -298,8 +338,9 @@ function AdminDashboard() {
              <div className="space-y-3">
                 {/* Replace Skeleton with styled div */}
                 {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-24 w-full rounded-lg bg-muted/50 animate-pulse p-4 flex justify-between items-center">
-                        <div className="space-y-2 flex-grow mr-4">
+                    // Use simple div with Tailwind for placeholder
+                    <div key={i} className="h-24 w-full rounded-lg bg-muted/50 animate-pulse p-4 flex justify-between items-center border">
+                         <div className="space-y-2 flex-grow mr-4">
                             <div className="h-5 w-3/4 bg-muted rounded"></div>
                             <div className="h-4 w-1/2 bg-muted rounded"></div>
                             <div className="h-4 w-1/3 bg-muted rounded"></div>
@@ -333,8 +374,8 @@ function AdminDashboard() {
 
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
-                         <Button variant="destructive" size="sm" aria-label={`Excluir evento ${evento.titulo}`}>
-                            <Trash2 className="h-4 w-4" />
+                         <Button variant="destructive" size="sm" aria-label={`Excluir evento ${evento.titulo}`} disabled={deletingId === evento.id}>
+                           {deletingId === evento.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -345,8 +386,13 @@ function AdminDashboard() {
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(evento.id)} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogCancel disabled={!!deletingId}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => handleDelete(evento.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                            disabled={!!deletingId} // Disable while deleting
+                        >
+                            {deletingId === evento.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Excluir
                         </AlertDialogAction>
                         </AlertDialogFooter>
@@ -365,30 +411,49 @@ function AdminDashboard() {
 
 // --- Main Admin Page Component ---
 export default function AdminPage() {
-  const { isAuthenticated, loading } = useAuth();
-  const [showLogin, setShowLogin] = React.useState(true); // Show login initially
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [adminPassword, setAdminPassword] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false); // General loading for the page logic
 
-  React.useEffect(() => {
-    // If authenticated, hide login. If not authenticated after loading, show login.
-    if (isAuthenticated) {
-      setShowLogin(false);
-    } else if (!loading) { // Ensure loading is finished before deciding
-        setShowLogin(true);
-    }
-  }, [isAuthenticated, loading]);
+  // Callback for successful login
+  const handleLoginSuccess = (password: string) => {
+      setAdminPassword(password);
+      setIsAuthenticated(true);
+       // Optional: Store auth state in session storage if needed for refresh persistence
+      sessionStorage.setItem('estrelas_admin_loggedin', 'true');
+      sessionStorage.setItem('estrelas_admin_pwd', password); // Store password (use more secure method in production)
+  };
+
+   // Logout handler
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setAdminPassword(null);
+    sessionStorage.removeItem('estrelas_admin_loggedin');
+    sessionStorage.removeItem('estrelas_admin_pwd');
+  };
+
+   // Check session storage on mount
+   React.useEffect(() => {
+      setLoading(true);
+      const loggedIn = sessionStorage.getItem('estrelas_admin_loggedin') === 'true';
+      const storedPassword = sessionStorage.getItem('estrelas_admin_pwd');
+      if (loggedIn && storedPassword) {
+          setIsAuthenticated(true);
+          setAdminPassword(storedPassword);
+      }
+      setLoading(false);
+   }, []);
 
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+      // Basic full page loader while checking session
+      return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  if (showLogin) {
-     // Pass callback to hide login on success
-    return <AdminLogin onLoginSuccess={() => setShowLogin(false)} />;
+  if (!isAuthenticated || !adminPassword) {
+    return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // If authenticated and not showing login, show dashboard
-  return <AdminDashboard />;
+  // If authenticated, show dashboard
+  return <AdminDashboard adminPassword={adminPassword} onLogout={handleLogout} />;
 }
-
-    

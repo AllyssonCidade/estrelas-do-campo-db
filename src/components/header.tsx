@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+// Removed useAuth import: import { useAuth } from '@/context/AuthContext';
 
 // >>> Tipo para nav items
 type NavItem = {
@@ -18,7 +18,16 @@ type NavItem = {
 
 export function Header() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth(); // Get authentication status
+  // Simple check for admin login status (using session storage for demo)
+  // Note: This is insecure for real applications.
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check session storage on mount and pathname change
+    const loggedIn = sessionStorage.getItem('estrelas_admin_loggedin') === 'true';
+    setIsAdminLoggedIn(loggedIn);
+  }, [pathname]); // Re-check if path changes (e.g., after login/logout)
+
 
   const baseNavItems: NavItem[] = [
     { href: '/', label: 'Início' },
@@ -26,15 +35,15 @@ export function Header() {
     { href: '/contato', label: 'Contato' },
   ];
 
-  // Conditionally add Admin link
-  const navItems: NavItem[] = isAuthenticated
+  // Conditionally add Admin link based on simple session check
+  const navItems: NavItem[] = isAdminLoggedIn
     ? [...baseNavItems, { href: '/admin', label: 'Admin', icon: ShieldCheck }]
     : baseNavItems;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container flex h-16 max-w-screen-2xl items-center px-4 sm:px-6 lg:px-8">
-        
+
         {/* Logo / Site Name */}
         <Link href="/" className="mr-6 flex items-center space-x-2 shrink-0">
           {/* Optional: Add a logo image here */}

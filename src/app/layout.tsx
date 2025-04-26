@@ -5,7 +5,7 @@ import './globals.css';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { cn } from '@/lib/utils';
-import { AuthProvider } from '@/context/AuthContext'; // Import AuthProvider
+// Removed AuthProvider import: import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
 
 // Setup Inter font
@@ -30,7 +30,7 @@ export default function RootLayout({
           "min-h-screen bg-background font-sans antialiased flex flex-col",
           inter.variable // Apply font variable
         )}>
-         <AuthProvider> {/* Wrap content with AuthProvider */}
+         {/* Removed AuthProvider wrapper */}
             <Header />
             {/* Remove default container padding/max-width to allow full-width sections */}
             <main className="flex-grow">
@@ -38,7 +38,7 @@ export default function RootLayout({
             </main>
             <Footer />
             <Toaster /> {/* Add Toaster for displaying messages */}
-        </AuthProvider>
+        {/* Removed AuthProvider wrapper */}
       </body>
     </html>
   );

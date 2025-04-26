@@ -2,34 +2,39 @@
 'use client'; // Mark as client component for animation hooks
 
 import * as React from 'react'; // Import React for useEffect/useState
-import { getNoticias } from '@/lib/firebase';
+// Removed Firestore import: import { getNoticias } from '@/lib/firebase';
+// Removed API import (for now): import { getNoticiasApi } from '@/lib/api';
 import type { Noticia } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+// Removed Skeleton import: import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { CalendarDays } from 'lucide-react';
 import { motion } from 'framer-motion'; // Import motion for animations
 
+// Define Sample Noticias Data Here (since it's static for now)
+const sampleNoticias: Omit<Noticia, 'id'>[] = [
+  { "titulo": "Vitória por 3x1!", "texto": "Grande jogo contra as Leoas! Nossas meninas mostraram garra e talento em campo.", "data": "20/05/2025", "imagem": "https://via.placeholder.com/100/22C55E/FFFFFF?text=Vitória" },
+  { "titulo": "Novo Uniforme!", "texto": "Confira o novo uniforme verde e ouro do Estrelas do Campo! Lindo e poderoso.", "data": "22/05/2025", "imagem": "https://via.placeholder.com/100/FBBF24/1F2937?text=Uniforme" },
+  { "titulo": "Treino Aberto!", "texto": "Venha apoiar as Estrelas no treino aberto deste sábado! Esperamos você!", "data": "25/05/2025", "imagem": "https://via.placeholder.com/100/cccccc/000000?text=Treino" },
+];
+
 export default function NoticiasPage() {
+  // Use state to hold the static news data
   const [noticias, setNoticias] = React.useState<Noticia[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null); // State to hold error message
+  const [loading, setLoading] = React.useState(true); // Still simulate loading briefly
 
   React.useEffect(() => {
-    const fetchNoticias = async () => {
-      setLoading(true);
-      setError(null); // Reset error before fetching
-      try {
-        const fetchedNoticias = await getNoticias();
-        setNoticias(fetchedNoticias);
-      } catch (error: any) {
-        console.error("Failed to fetch news:", error);
-        setError("Não foi possível carregar as notícias. Verifique sua conexão ou tente novamente mais tarde."); // Set user-friendly error message
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchNoticias();
+    // Simulate fetching static data
+    setLoading(true);
+    setTimeout(() => {
+      // Add IDs to sample data
+      const dataWithIds = sampleNoticias.map((noticia, index) => ({
+        ...noticia,
+        id: `static-${index}` // Assign a simple ID
+      }));
+      setNoticias(dataWithIds);
+      setLoading(false);
+    }, 300); // Simulate a small delay
   }, []);
 
   // Animation variants
@@ -52,24 +57,24 @@ export default function NoticiasPage() {
 
       {loading ? (
         <div className="grid gap-6 md:grid-cols-1">
-           {[...Array(3)].map((_, i) => ( // Show 3 skeletons while loading
-            <Card key={`skeleton-${i}`} className="shadow-md rounded-lg overflow-hidden flex flex-col sm:flex-row">
-              <Skeleton className="relative w-full h-40 sm:w-[100px] sm:h-[100px] flex-shrink-0 bg-muted rounded-t-lg sm:rounded-l-lg sm:rounded-tr-none" />
+           {[...Array(3)].map((_, i) => ( // Show 3 placeholders while loading
+            <div key={`skeleton-${i}`} className="shadow-md rounded-lg overflow-hidden flex flex-col sm:flex-row bg-card border animate-pulse">
+              {/* Image Placeholder */}
+              <div className="relative w-full h-40 sm:w-[100px] sm:h-[100px] flex-shrink-0 bg-muted rounded-t-lg sm:rounded-l-lg sm:rounded-tr-none" />
+              {/* Content Placeholder */}
               <div className="flex flex-col justify-between p-4 flex-grow space-y-2">
-                <Skeleton className="h-6 w-3/4 bg-muted" />
-                <Skeleton className="h-4 w-full bg-muted" />
-                <Skeleton className="h-4 w-1/2 bg-muted" />
+                <div className="h-6 w-3/4 bg-muted rounded" /> {/* Title Skel */}
+                <div className="h-4 w-full bg-muted rounded" /> {/* Text Skel */}
+                <div className="h-4 w-1/2 bg-muted rounded" /> {/* Text Skel */}
                 <div className="flex items-center gap-2 pt-2 border-t mt-auto">
-                  <Skeleton className="h-4 w-4 rounded-full bg-muted" />
-                  <Skeleton className="h-4 w-20 bg-muted" />
+                  <div className="h-4 w-4 rounded-full bg-muted" /> {/* Icon Skel */}
+                  <div className="h-4 w-20 bg-muted rounded" /> {/* Date Skel */}
                 </div>
               </div>
-            </Card>
+            </div>
            ))}
         </div>
-      ) : error ? ( // Display error message if fetch failed
-         <p className="text-center text-destructive mt-10">{error}</p>
-      ) : noticias.length === 0 ? (
+      ) : noticias.length === 0 ? ( // Should not happen with static data, but good practice
         <p>Nenhuma notícia publicada recentemente.</p>
       ) : (
         <div className="grid gap-6 md:grid-cols-1">
@@ -82,26 +87,22 @@ export default function NoticiasPage() {
               variants={cardVariants}
               className="w-full" // Ensure motion div takes full width
             >
-              <Card className="shadow-md rounded-lg overflow-hidden flex flex-col sm:flex-row w-full bg-card">
-                {noticia.imagem && (
-                  <div className="relative w-full h-48 sm:w-[100px] sm:h-[100px] flex-shrink-0">
+              <Card className="shadow-md rounded-lg overflow-hidden flex flex-col sm:flex-row w-full bg-card border"> {/* Added border */}
+                {/* Image */}
+                <div className="relative w-full h-48 sm:w-[100px] sm:h-[100px] flex-shrink-0 bg-muted"> {/* Added bg-muted as fallback */}
                     <Image
-                      src={noticia.imagem}
+                      src={noticia.imagem || "https://via.placeholder.com/100/cccccc/000000?text=Sem+Imagem"} // Fallback image
                       alt={`Imagem para ${noticia.titulo}`}
                       width={100} // Specify width
                       height={100} // Specify height
                       style={{ objectFit: 'cover' }}
                       className="rounded-t-lg sm:rounded-l-lg sm:rounded-tr-none"
-                      loading="lazy" // Lazy load images in Noticias section
-                      unoptimized={noticia.imagem.startsWith('https://via.placeholder.com')} // Avoid optimizing placeholders
+                      loading="lazy" // Lazy load images
+                      unoptimized // Don't optimize placeholders
                     />
                   </div>
-                )}
-                 {!noticia.imagem && (
-                  <div className="relative w-full h-48 sm:w-[100px] sm:h-[100px] flex-shrink-0 bg-muted flex items-center justify-center rounded-t-lg sm:rounded-l-lg sm:rounded-tr-none">
-                    <span className="text-xs text-muted-foreground">Sem Imagem</span>
-                  </div>
-                )}
+
+                {/* Content */}
                 <div className="flex flex-col justify-between p-4 flex-grow">
                   <div>
                     <CardHeader className="p-0 pb-2">
@@ -124,6 +125,3 @@ export default function NoticiasPage() {
     </div>
   );
 }
-
-// Removed revalidate as data fetching is now client-side with useEffect
-// export const revalidate = 60;
