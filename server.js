@@ -202,6 +202,101 @@ app.delete('/api/eventos/:id', checkPassword, async (req, res) => {
   }
 });
 
+
+// --- API Routes for Noticias ---
+
+// GET /api/noticias - List recent news for public view (sorted desc by date)
+app.get('/api/noticias', async (req, res) => {
+  console.log(`GET /api/noticias requested from origin: ${req.headers.origin}`);
+  try {
+    // Fetch all, then sort and limit in code
+    const { rows } = await pool.query('SELECT * FROM noticias');
+    const sortedNoticias = rows
+      .map(noticia => ({ ...noticia, parsedDate: parseDateString(noticia.data) }))
+      .filter(noticia => noticia.parsedDate) // Ensure valid dates
+      .sort((a, b) => (b.parsedDate?.getTime() ?? -Infinity) - (a.parsedDate?.getTime() ?? -Infinity)) // Sort DESC
+      .map(({ parsedDate, ...rest }) => rest); // Remove temporary field
+
+    console.log(`Sending ${Math.min(sortedNoticias.length, 10)} noticias for /api/noticias`);
+    res.json(sortedNoticias.slice(0, 10)); // Apply limit
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    res.status(500).json({ error: 'Erro ao buscar notícias do banco de dados.' });
+  }
+});
+
+// GET /api/noticias/all - List ALL news for CMS (sorted desc by date)
+app.get('/api/noticias/all', async (req, res) => {
+    console.log(`GET /api/noticias/all requested from origin: ${req.headers.origin}`);
+    try {
+        const { rows } = await pool.query('SELECT * FROM noticias');
+
+        const sortedNoticias = rows
+            .map(noticia => ({ ...noticia, parsedDate: parseDateString(noticia.data) }))
+            .filter(noticia => noticia.parsedDate) // Ensure valid dates
+            .sort((a, b) => (b.parsedDate?.getTime() ?? -Infinity) - (a.parsedDate?.getTime() ?? -Infinity)) // Sort DESC
+            .map(({ parsedDate, ...rest }) => rest); // Remove temporary field
+
+        console.log(`Sending ${sortedNoticias.length} noticias for /api/noticias/all`);
+        res.json(sortedNoticias);
+    } catch (error) {
+        console.error('Error fetching all news for CMS:', error);
+        res.status(500).json({ error: 'Erro ao buscar todas as notícias para CMS.' });
+    }
+});
+
+// POST /api/noticias - Create news item (Password Protected)
+app.post('/api/noticias', checkPassword, async (req, res) => {
+  const { titulo, texto, imagem, data } = req.body;
+  console.log(`POST /api/noticias: ${titulo}`);
+
+  // Validation
+  if (!titulo || !texto || !imagem || !data) return res.status(400).json({ error: 'Todos os campos são obrigatórios (titulo, texto, imagem, data).' });
+  if (!isValidDate(data)) return res.status(400).json({ error: 'Formato de data inválido. Use DD/MM/YYYY.' });
+  if (!isValidUrl(imagem)) return res.status(400).json({ error: 'URL da imagem inválida. Deve começar com http:// ou https://.' });
+  if (titulo.length > 100) return res.status(400).json({ error: 'Título não pode exceder 100 caracteres.' });
+  if (imagem.length > 255) return res.status(400).json({ error: 'URL da imagem não pode exceder 255 caracteres.' });
+
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO noticias (titulo, texto, imagem, data) VALUES ($1, $2, $3, $4) RETURNING *',
+      [titulo, texto, imagem, data]
+    );
+    console.log(`Noticia added successfully: ID ${rows[0].id}`);
+    res.status(201).json({ message: 'Notícia adicionada com sucesso!', noticia: rows[0] });
+  } catch (error) {
+    console.error('Error creating news:', error);
+    res.status(500).json({ error: 'Erro ao salvar notícia no banco de dados.' });
+  }
+});
+
+// PUT /api/noticias/:id - Update news item (Password Protected)
+app.put('/api/noticias/:id', checkPassword, async (req, res) => {
+  const { id } = req.params;
+  const { titulo, texto, imagem, data } = req.body;
+  console.log(`PUT /api/noticias/${id}: ${titulo}`);
+
+  // Validation
+  if (!titulo || !texto || !imagem || !data) return res.status(400).json({ error: 'Todos os campos são obrigatórios (titulo, texto, imagem, data).' });
+  if (!isValidDate(data)) return res.status(400).json({ error: 'Formato de data inválido. Use DD/MM/YYYY.' });
+
+  try {
+    const { rows } = await pool.query(
+      'UPDATE noticias SET titulo = $1, texto = $2, imagem = $3, data = $4 WHERE id = $5 RETURNING *',
+      [titulo, texto, imagem, data, id]
+    );
+
+    if (rows.length === 0) return res.status(404).json({ error: 'Notícia não encontrada.' });
+
+    console.log(`Notícia updated successfully: ID ${rows[0].id}`);
+    res.json({ message: 'Notícia atualizada com sucesso!', noticia: rows[0] });
+  } catch (error) {
+    console.error('Error updating news:', error);
+    res.status(500).json({ error: 'Erro ao atualizar notícia no banco de dados.' });
+  }
+});
+
+
 // --- Root Route (Optional: for health check) ---
 app.get('/', (req, res) => {
   res.send('Estrelas do Campo Backend API is running!');
