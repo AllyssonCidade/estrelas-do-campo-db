@@ -1,0 +1,30 @@
+# render.yaml
+# Blueprint for deploying the Estrelas do Campo backend and database on Render.
+
+services:
+  # PostgreSQL Database Service
+  - type: pserv # Private Service (Database)
+    name: estrelas-db # Name of the database service
+    databaseName: estrelas_db # Name of the database itself
+    user: estrelas_user # Database user
+    plan: free # Use Render's free PostgreSQL tier
+    # Render will automatically generate a strong password and set
+    # the DATABASE_URL environment variable in the web service.
+
+  # Node.js Backend Web Service
+  - type: web # Web Service
+    name: estrelas-backend # Name of the backend service
+    runtime: node # Specify Node.js runtime
+    plan: free # Use Render's free web service tier
+    buildCommand: "npm install" # Command to install dependencies
+    startCommand: "npm start" # Command to start the server (node server.js)
+    envVars:
+      - key: DATABASE_URL # Database connection string
+        fromDatabase:
+          name: estrelas-db # Reference the database service created above
+          property: connectionString
+      - key: ADMIN_PASSWORD # Static admin password for CMS
+        value: "estrelas123" # Keep the password here or use Render secrets
+      # Render sets the PORT environment variable automatically.
+      # - key: NODE_ENV
+      #   value: production # Optional: Set Node environment
